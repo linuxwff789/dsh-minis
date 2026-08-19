@@ -9,6 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -31,6 +32,7 @@ class DshWebActivity : ComponentActivity() {
         setContent {
             MinisTheme {
                 var reloadKey by remember { mutableStateOf(0) }
+            Box(Modifier.fillMaxSize()) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { ctx ->
@@ -67,6 +69,7 @@ class DshWebActivity : ComponentActivity() {
                 ) {
                     Text("Reload")
                 }
+            }
             }
         }
     }
