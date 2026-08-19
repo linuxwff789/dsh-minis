@@ -60,10 +60,11 @@ class RootfsManager private constructor(private val context: Context) {
     val installState: StateFlow<RootfsInstallState> = _installState.asStateFlow()
 
     /**
-     * Install Alpine rootfs from assets if not already present.
-     * Extracts alpine-minirootfs.tar.gz using manual POSIX tar parsing.
-     * Progress is published to [installState] (Preparing → Extracting(f) →
-     * Finalizing → Installed / Failed).
+     * Install Debian rootfs if not already present.
+     * DSH fork: builds the minbase ONLINE from TUNA (bootstrap.sh — busybox
+     * downloads the pkglist debs, unpacks with tar, then dpkg finalises under
+     * proot). No bundled rootfs asset; mirrors are China-fast vs GitHub.
+     * Progress: Preparing → Extracting(f) → Finalizing → Installed / Failed.
      */
     suspend fun installIfNeeded() = withContext(Dispatchers.IO) {
         if (isInstalled) {
@@ -74,7 +75,7 @@ class RootfsManager private constructor(private val context: Context) {
 
         try {
             _installState.value = RootfsInstallState.Preparing
-            Log.i(TAG, "Installing Alpine rootfs...")
+            Log.i(TAG, "Installing Debian rootfs (online bootstrap)...")
 
             // Clean up any partial install
             if (rootfsDir.exists()) {
@@ -82,52 +83,18 @@ class RootfsManager private constructor(private val context: Context) {
             }
             rootfsDir.mkdirs()
 
-            // Extract rootfs from assets.
-            // AAPT may decompress .tar.gz → .tar automatically, so try both names.
-            val assetName = try {
-                context.assets.open(ROOTFS_ASSET).close()
-                ROOTFS_ASSET
-            } catch (_: java.io.FileNotFoundException) {
-                ROOTFS_ASSET_TAR
-            }
-
-            // Asset size for progress calculation — compressed length (for .gz)
-            // or uncompressed length (for .tar). openFd() fails for 0-length
-            // assets on some devices; fall back to 0 which disables progress.
-            val assetTotal: Long = try {
-                context.assets.openFd(assetName).use { it.length }
-            } catch (_: Exception) { 0L }
-
-            // Emit an initial 0% so the UI flips from Preparing → progress bar.
+            // DSH fork: ONLINE bootstrap — no bundled rootfs asset. Stage
+            // busybox + libbusybox from assets, then run bootstrap.sh which
+            // downloads the Debian minbase debs from TUNA and unpacks them,
+            // then finalises dpkg under proot (bootstrapping proot here).
             _installState.value = RootfsInstallState.Extracting(0f)
-
-            context.assets.open(assetName).use { rawAsset ->
-                // Wrap the ASSET stream (not the gzip stream) so progress tracks
-                // compressed bytes consumed — monotonic and matches the size we
-                // have a total for. Throttle updates to avoid flooding the StateFlow.
-                val progressStream = ProgressInputStream(rawAsset, assetTotal) { fraction ->
-                    _installState.value = RootfsInstallState.Extracting(fraction)
-                }
-                if (assetName.endsWith(".gz")) {
-                    GZIPInputStream(progressStream).use { gzipStream ->
-                        extractTar(gzipStream, rootfsDir)
-                    }
-                } else if (assetName.endsWith(".xz")) {
-                    // DSH fork: Debian minirootfs ships as tar.xz (GitHub
-                    // single-file limit is 100MB; xz gets 363MB minbase to ~64MB).
-                    org.tukaani.xz.XZInputStream(progressStream).use { xzStream ->
-                        extractTar(xzStream, rootfsDir)
-                    }
-                } else {
-                    extractTar(progressStream, rootfsDir)
-                }
-            }
+            stageBootstrapTools()
+            runBootstrap()
 
             _installState.value = RootfsInstallState.Finalizing
 
             // Write arch marker
             archFile.writeText(ARCH)
-
             // Pre-create /var/minis directories. Mirrors iOS
             // RootfsManager.swift:76-80 (attachments/offloads/workspace/skills/
             // shared) plus Android-specific `memory` kept from prior parity work.
@@ -231,6 +198,74 @@ class RootfsManager private constructor(private val context: Context) {
         backupDir.copyRecursively(rootHome, overwrite = true)
         backupDir.deleteRecursively()
         Log.i(TAG, "User data restored from $backupDir")
+    }
+
+    /** Stage assets/bin/busybox + libbusybox + bootstrap.sh + pkglist.txt into filesDir/dsh-tools. */
+    private fun stageBootstrapTools() {
+        val toolsDir = File(context.filesDir, "dsh-tools")
+        toolsDir.mkdirs()
+        copyAssetQuiet("bin/busybox", File(toolsDir, "busybox"), true)
+        copyAssetQuiet("bin/libbusybox.so.1.38.0", File(toolsDir, "libbusybox.so.1.38.0"), false)
+        copyAssetQuiet("bootstrap.sh", File(toolsDir, "bootstrap.sh"), true)
+        copyAssetQuiet("pkglist.txt", File(toolsDir, "pkglist.txt"), false)
+    }
+
+    private fun copyAssetQuiet(asset: String, dest: File, executable: Boolean) {
+        try {
+            context.assets.open(asset).use { inp ->
+                java.io.FileOutputStream(dest).use { out ->
+                    val buf = ByteArray(65536)
+                    var n: Int
+                    while (inp.read(buf).also { n = it } != -1) out.write(buf, 0, n)
+                }
+            }
+            if (executable) dest.setExecutable(true)
+        } catch (e: Exception) {
+            Log.w(TAG, "asset copy failed: $asset", e)
+        }
+    }
+
+    /** Run bootstrap.sh (busybox sh) to build the Debian minbase into rootfsDir. */
+    private fun runBootstrap() {
+        val toolsDir = File(context.filesDir, "dsh-tools")
+        val busybox = File(toolsDir, "busybox")
+        val bootstrap = File(toolsDir, "bootstrap.sh")
+        if (!busybox.exists() || !bootstrap.exists()) {
+            throw IllegalStateException("bootstrap tools missing")
+        }
+
+        val cmd = listOf(busybox.absolutePath, "sh", bootstrap.absolutePath, rootfsDir.absolutePath, "all")
+        val pb = ProcessBuilder(cmd)
+        val env = pb.environment()
+        env["LD_LIBRARY_PATH"] = toolsDir.absolutePath
+        env["DSH_BUSYBOX"] = busybox.absolutePath
+        env["DSH_PROOT"] = prootBinary.absolutePath
+        env["DSH_PROOT_LOADER"] = File(prootBinary.parentFile, "libproot-loader.so").absolutePath
+        env["DSH_PROOT_LOADER_32"] = File(prootBinary.parentFile, "libproot-loader32.so").absolutePath
+        env["DSH_PKGLIST"] = File(toolsDir, "pkglist.txt").absolutePath
+        env["DSH_MIRROR"] = "http://mirrors.tuna.tsinghua.edu.cn/debian"
+        env["DSH_PROOT_TMP_DIR"] = File(context.filesDir, "dsh-tools/cache").absolutePath
+        env["HOME"] = "/root"
+        env["TMPDIR"] = toolsDir.absolutePath
+        env.remove("LD_PRELOAD")
+        pb.redirectErrorStream(true)
+        pb.directory(context.filesDir)
+
+        val log = File(context.filesDir, "bootstrap.log")
+        try {
+            val p = pb.start()
+            java.io.FileOutputStream(log).use { out ->
+                p.inputStream.use { inp ->
+                    val buf = ByteArray(8192)
+                    var n: Int
+                    while (inp.read(buf).also { n = it } != -1) out.write(buf, 0, n)
+                }
+            }
+            val rc = p.waitFor()
+            if (rc != 0) throw IllegalStateException("bootstrap failed rc=$rc — see bootstrap.log")
+        } catch (e: java.io.IOException) {
+            throw IllegalStateException("bootstrap exec failed", e)
+        }
     }
 
     private fun calculateDirSize(dir: File): Long {
