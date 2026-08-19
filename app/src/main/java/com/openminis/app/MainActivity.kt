@@ -1,11 +1,13 @@
 package com.openminis.app
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,14 +15,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -30,6 +35,7 @@ import com.openminis.app.sandbox.TerminalSession
 import com.openminis.app.ui.sandbox.RootfsManagementScreen
 import com.openminis.app.ui.terminal.TerminalScreen
 import com.openminis.app.ui.theme.MinisTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -87,6 +93,11 @@ fun AppRoot() {
             }
         }
         else -> {
+            var dshInstalled by remember { mutableStateOf(DshManager.getInstance(context).isInstalled()) }
+            var dshRunning by remember { mutableStateOf(DshManager.getInstance(context).isServerRunning()) }
+            var installBusy by remember { mutableStateOf(false) }
+            var installLog by remember { mutableStateOf("") }
+
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     RootfsManagementScreen(
@@ -94,7 +105,77 @@ fun AppRoot() {
                         onBrowseFiles = {},
                     )
                 }
-                // Launch terminal button pinned at the bottom of the rootfs page.
+                // DSH (deepseek-harness) section
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val dsh = DshManager.getInstance(context)
+                    Text("DSH (deepseek-harness)", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    if (installBusy) {
+                        Text("Installing… (log: dsh-install.log)", color = MaterialTheme.colorScheme.primary)
+                    } else if (!dshInstalled) {
+                        Button(onClick = {
+                            installBusy = true
+                            scope.launch {
+                                try {
+                                    PRootKernel.boot(context)
+                                    val p = dsh.install()
+                                    if (p == null) {
+                                        installLog = "failed to start installer"
+                                        installBusy = false
+                                    } else {
+                                        p.waitFor()
+                                        installBusy = false
+                                        dshInstalled = dsh.isInstalled()
+                                        installLog = "install exit: " + p.exitValue()
+                                    }
+                                } catch (t: Throwable) {
+                                    installBusy = false
+                                    installLog = t.message ?: t.javaClass.simpleName
+                                }
+                            }
+                        }) { Text("Install DSH") }
+                    } else if (!dshRunning) {
+                        Row {
+                            Button(onClick = {
+                                scope.launch {
+                                    try {
+                                        PRootKernel.boot(context)
+                                        dsh.startServer()
+                                        // wait for port
+                                        repeat(60) {
+                                            if (dsh.isServerRunning()) return@repeat
+                                            delay(1000)
+                                        }
+                                        dshRunning = dsh.isServerRunning()
+                                    } catch (t: Throwable) {
+                                        installLog = t.message ?: t.javaClass.simpleName
+                                    }
+                                }
+                            }) { Text("Start DSH") }
+                        }
+                    } else {
+                        Row {
+                            Button(onClick = {
+                                context.startActivity(Intent(context, DshWebActivity::class.java))
+                            }) { Text("Open DSH Web") }
+                            Spacer(Modifier.height(0.dp))
+                            OutlinedButton(onClick = {
+                                scope.launch {
+                                    try {
+                                        dsh.startServer()
+                                    } catch (_: Throwable) {}
+                                }
+                            }) { Text("Restart") }
+                        }
+                    }
+                    if (installLog.isNotEmpty()) {
+                        Text(installLog, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                // Launch terminal button pinned at the bottom.
                 Button(
                     onClick = {
                         if (RootfsManager.getInstance(context).isInstalled) {
@@ -111,7 +192,7 @@ fun AppRoot() {
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Text("启动终端 / Launch Terminal")
                 }
