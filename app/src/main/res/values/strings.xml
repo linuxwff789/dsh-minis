@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="terminal_title">Minis Shell</string>
+<string name="terminal_clear">Clear</string>
+<string name="terminal_show_keyboard">Show</string>
+<string name="terminal_hide_keyboard">Hide</string>
+<string name="common_back">Back</string>
+<string name="common_cancel">Cancel</string>
+<string name="common_close">Close</string>
+<string name="cancel">Cancel</string>
+<string name="rootfs_management_title">Rootfs Management</string>
+<string name="rootfs_installed_label">Installed</string>
+<string name="rootfs_install_label">Install Rootfs</string>
+<string name="rootfs_about_title">About Rootfs</string>
+<string name="rootfs_actions_section">Actions</string>
+<string name="rootfs_browse_files_label">Browse Files</string>
+<string name="rootfs_browse_section">Browse</string>
+<string name="rootfs_info_section">Info</string>
+<string name="rootfs_mirrors_section">Mirrors</string>
+<string name="rootfs_path_label">Path</string>
+<string name="rootfs_progress_section">Progress</string>
+<string name="rootfs_reset_backup_confirm_button">Reset &amp; Backup</string>
+<string name="rootfs_reset_backup_confirm_message">This will backup your /root directory, then reset the rootfs. You can restore the backup later.</string>
+<string name="rootfs_reset_backup_confirm_title">Reset with Backup?</string>
+<string name="rootfs_reset_backup_description">Save /root before resetting</string>
+<string name="rootfs_reset_backup_label">Reset &amp; Backup User Data</string>
+<string name="rootfs_reset_confirm_message">This will delete the entire rootfs. All data will be lost.</string>
+<string name="rootfs_reset_confirm_title">Reset Rootfs?</string>
+<string name="rootfs_reset_description">Delete everything and reinstall</string>
+<string name="rootfs_reset_label">Reset Rootfs</string>
+<string name="rootfs_restore_description">Restore previously backed up /root</string>
+<string name="rootfs_restore_label">Restore User Data</string>
+<string name="rootfs_result_section">Result</string>
+<string name="rootfs_size_label">Size</string>
+<string name="rootfs_status_section">Status</string>
+  <string name="app_name">DSH Terminal</string>
+</resources>
+  <string name="copy">Copy</string>
+  <string name="selectAll">Select All</string>
+  <string name="app_name">DSH Terminal</string>
+</resources>
