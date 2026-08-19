@@ -1,0 +1,42 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Download Debian rootfs
+        run: |
+          mkdir -p app/src/main/assets
+          curl -fL -o app/src/main/assets/debian-minirootfs.tar.xz \
+            "https://github.com/linuxwff789/dsh-minis/releases/download/rootfs-v1/debian-minirootfs.tar.xz"
+          ls -la app/src/main/assets/
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-minis-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
