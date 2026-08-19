@@ -10,9 +10,11 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.openminis.app.ui.theme.MinisTheme
@@ -59,7 +61,7 @@ class DshWebActivity : ComponentActivity() {
                 Button(
                     onClick = { reloadKey++ },
                     modifier = Modifier
-                        .align(androidx.compose.ui.Alignment.BottomEnd)
+                        .align(Alignment.BottomEnd)
                         .padding(16.dp)
                 ) {
                     Text("Reload")
