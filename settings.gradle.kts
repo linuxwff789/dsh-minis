@@ -22,3 +22,4 @@ plugins {
 }
 
 rootProject.name = "DshMinis"
+include(":app")
