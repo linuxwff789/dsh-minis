@@ -34,6 +34,21 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
 
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="dsh-minis-nightly"
+          APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          NOTES="DSH Minis (proot Debian terminal) nightly — ${{ github.sha }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+            gh release edit "$TAG" --title "$NOTES" --notes "Download: https://github.com/linuxwff789/dsh-minis/releases/latest"
+          else
+            gh release create "$TAG" "$APK" --title "$NOTES" --notes "Download: https://github.com/linuxwff789/dsh-minis/releases/latest"
+          fi
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
