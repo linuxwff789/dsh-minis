@@ -146,7 +146,7 @@ object AppLogger {
         // it against unrelated hardware. Emitted per logging session (not per
         // launch) so it is present in every attached log, including the
         // post-crash one.
-        appContext?.let { com.openminis.app.diagnostics.EnvironmentBanner.log(it) }
+        // DSH fork: diagnostics.EnvironmentBanner removed
     }
 
     @Synchronized

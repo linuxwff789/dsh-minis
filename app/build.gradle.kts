@@ -39,8 +39,10 @@ android {
         jvmTarget = "17"
     }
 
+        buildConfig = true
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     externalNativeBuild {

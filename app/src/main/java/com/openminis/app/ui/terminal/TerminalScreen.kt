@@ -198,7 +198,7 @@ fun TerminalScreen(
                         terminalSession.setWindowSize(cols, rows)
                     },
                     onTap = { inputController.requestFocus() },
-                )
+                Unit)
                 TerminalInputView(
                     onInput = { bytes ->
                         // Any user input snaps back to live tail so typing is visible.
@@ -216,7 +216,7 @@ fun TerminalScreen(
                     applicationCursorKeys = emulator.applicationCursorKeys,
                     controller = inputController,
                     modifier = Modifier.size(1.dp),
-                )
+                Unit)
             }
         }
 
@@ -243,7 +243,7 @@ fun TerminalScreen(
                     terminalSession.clearOutput()
                     emulator.feed("\u001Bc".toByteArray())
                 },
-            )
+            Unit)
         }
 
         // T290: accessory bar — anchored to bottom of the parent Box and
@@ -276,14 +276,12 @@ fun TerminalScreen(
                     else byteArrayOf(0x1B, '['.code.toByte())
                     terminalSession.sendRawBytes(prefix + byteArrayOf(dir.code.toByte()))
                 },
-            )
+            Unit)
         }
 
         previewUrl?.let { url ->
-            com.openminis.app.ui.components.UrlPreviewSheet(
-                url = url,
-                onDismiss = { previewUrl = null },
-            )
+            // DSH fork: UrlPreviewSheet removed — stub
+            Unit
         }
     }
 }
