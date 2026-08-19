@@ -75,6 +75,8 @@ dependencies {
     // OkHttp (mirror speed test in RootfsManagement)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // kotlinx.serialization (MountedFoldersStore)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }

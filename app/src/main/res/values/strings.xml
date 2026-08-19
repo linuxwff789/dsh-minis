@@ -36,4 +36,15 @@
     <string name="rootfs_result_section">Result</string>
     <string name="rootfs_size_label">Size</string>
     <string name="rootfs_status_section">Status</string>
+    <string name="mirror_back">Back</string>
+    <string name="mirror_current_section">Current</string>
+    <string name="mirror_detect_fast_label">Detect Fast Mirrors</string>
+    <string name="mirror_mirrors_section">Mirrors</string>
+    <string name="mirror_official_badge">Official</string>
+    <string name="mirror_official_default">Official (default)</string>
+    <string name="mirror_speed_test_results_section">Speed Test Results</string>
+    <string name="mirror_test_speed_label">Test Speed</string>
+    <string name="mirror_test_speed_testing">Testing…</string>
+    <string name="mirror_timeout_label">Timeout</string>
+    <string name="mirror_use_mirror_toggle">Use Mirror</string>
 </resources>
