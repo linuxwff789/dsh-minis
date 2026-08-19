@@ -154,7 +154,7 @@ object PRootKernel {
         // Start the native_offload server so the proot extension can reach it
         // over the abstract unix socket. Handlers must have been registered
         // via NativeOffloadServer.register() before this point.
-        NativeOffloadServer.start(rootfsManager.rootfsDir)
+        // DSH fork: NativeOffloadServer skipped (no agent offload).
 
         // Materialize stub binaries inside the rootfs for each handler so
         // /bin/sh's PATH search succeeds and triggers an execve the extension
@@ -646,7 +646,7 @@ object PRootKernel {
 
         // Native offload: route registered handler names to the host-side
         // NativeOffloadServer over the abstract unix socket.
-        val handlers = NativeOffloadServer.registeredHandlers
+        val handlers = emptyList<String>() // DSH fork: no native offload
         if (handlers.isNotEmpty()) {
             cmd.add("--native-offload=${NativeOffloadServer.socketName}:${handlers.joinToString(",")}")
         }
