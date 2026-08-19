@@ -24,13 +24,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Download Debian rootfs
-        run: |
-          mkdir -p app/src/main/assets
-          curl -fL -o app/src/main/assets/debian-minirootfs.tar.xz \
-            "https://github.com/linuxwff789/dsh-minis/releases/download/rootfs-v1/debian-minirootfs.tar.xz"
-          ls -la app/src/main/assets/
-
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
 
@@ -41,7 +34,7 @@ jobs:
           set -euo pipefail
           TAG="dsh-minis-nightly"
           APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
-          NOTES="DSH Minis (proot Debian terminal) nightly — ${{ github.sha }}"
+          NOTES="DSH Minis (proot Debian terminal, online rootfs) nightly — ${{ github.sha }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
             gh release edit "$TAG" --title "$NOTES" --notes "Download: https://github.com/linuxwff789/dsh-minis/releases/latest"
